@@ -1,0 +1,39 @@
+site_manager.settings:
+  path: '/admin/sites/settings'
+  defaults:
+    _form: '\Drupal\site_manager\Form\SiteSettingForm'
+    _title: 'Settings site manager'
+  requirements:
+    _permission: 'access administration pages'
+  options:
+    _admin_route: TRUE
+
+site_manager.editor:
+  path: '/admin/sites/editor'
+  defaults:
+    _form: '\Drupal\site_manager\Form\FileEditor'
+    _title: 'Editor site manager'
+  requirements:
+    _permission: 'allowed manage sites config'
+  options:
+    _admin_route: TRUE
+
+site_manager.default_controller_list:
+  path: '/admin/sites/list'
+  defaults:
+    _controller: '\Drupal\site_manager\Controller\DefaultController::list'
+    _title: 'Sites list'
+  requirements:
+    _permission: 'access manage sites'
+  options:
+    _admin_route: TRUE
+
+site_manager.process:
+  path: '/process/execute'
+  defaults:
+    _form: '\Drupal\site_manager\Form\ProcessForm'
+    _title: 'Process site manager'
+  requirements:
+    _permission: 'access content'
+
+  

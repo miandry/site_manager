@@ -1,0 +1,7 @@
+site_manager.add_site:
+  route_name: 'node.add'
+  route_parameters:
+    node_type: 'site'
+  title: 'Add Site'
+  appears_on:
+    - site_manager.default_controller_list

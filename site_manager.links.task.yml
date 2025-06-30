@@ -1,0 +1,11 @@
+site_manager.main:
+  route_name: site_manager.default_controller_list
+  base_route: site_manager.default_controller_list
+  title: 'Sites Liste'
+
+site_manager.settings:
+  route_name: site_manager.settings
+  base_route: site_manager.default_controller_list
+  title: 'Sites Settings'
+
+

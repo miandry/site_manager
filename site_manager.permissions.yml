@@ -1,0 +1,6 @@
+access manage sites :
+  title: 'Allowed Manage sites'
+  description: 'Allowed Manage sites'
+allowed manage sites config :
+  title: 'manage sites config'
+  description: 'manage sites config'

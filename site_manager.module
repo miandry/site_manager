@@ -1,0 +1,312 @@
+<?php
+
+/**
+ * @file
+ * Contains site_manager.module.
+ */
+
+use Drupal\Core\Routing\RouteMatchInterface;
+use Drupal\node\NodeInterface;
+use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Url;
+use Drupal\Core\Entity\EntityInterface;
+use Symfony\Component\HttpFoundation\RedirectResponse;
+
+/**
+ * Implements hook_help().
+ */
+function site_manager_help($route_name, RouteMatchInterface $route_match) {
+  switch ($route_name) {
+    // Main module help for the site_manager module.
+    case 'help.page.site_manager':
+      $output = '';
+      $output .= '<h3>' . t('About') . '</h3>';
+      $output .= '<p>' . t('Manage web site') . '</p>';
+      return $output;
+    default:
+  }
+}
+/**
+ * Implements hook_ENTITY_TYPE_presave().
+ *
+ * Save the first value of field_article_tags to field_article_main_tag.
+ *
+ * @param \Drupal\node\NodeInterface $node
+ */
+
+function site_manager_node_presave(NodeInterface $node) {
+    if ($node->getType() == 'site' && $node->isNew()) {
+         $title = $node->label();
+         $helper = \Drupal::service('drupal.helper');
+         $site_name = $helper->helper->generate_machine_name($title);
+         $id = $helper->node->getIdNodeByField('site','site_name',$site_name);
+         if(is_numeric($id) ){
+          $site_name = $site_name.'_'.$id;
+         }
+         $node->site_name->value = $site_name ;    
+         $st_domain_name = \Drupal\site_manager\SiteManager::domain_build($site_name); 
+         $node->field_st_domain_name->value = $st_domain_name ;
+    }
+}
+/**
+ * Implements hook_ENTITY_TYPE_presave().
+ *
+ * Save the first value of field_article_tags to field_article_main_tag.
+ *
+ * @param \Drupal\node\NodeInterface $node
+ */
+
+function site_manager_node_insert(NodeInterface $node) {
+ 
+    if ($node->getType() == 'site') {
+      $service_base = \Drupal::service('site_manager.base') ;
+      $service_base->buildJsonSite($node->id());
+      $service_base->rebuildJSONConfig();
+    }
+}
+function site_manager_node_update(NodeInterface $node) {
+  if ($node->getType() == 'site') {
+    $service_base = \Drupal::service('site_manager.base') ;
+    $service_base->buildJsonSite($node->id());
+    $service_base->rebuildJSONConfig();
+  }
+}
+/**
+ * Custom validation callback for node delete form.
+ */
+function _site_delete_validation(&$form, FormStateInterface $form_state) {
+  // Get the node ID from the form state.
+  $node = $form_state->getFormObject()->getEntity();
+  $site = new \Drupal\site_manager\SiteManager($node);
+  $status = $site->deleteProcess() ;
+  if (!$status) {
+    $form_state->setError($form, t('Site deletion is failed.'));
+  }
+}
+
+/**
+ * Implements hook_ENTITY_TYPE_presave().
+ *
+ * Save the first value of field_article_tags to field_article_main_tag.
+ *
+ * @param \Drupal\node\NodeInterface $node
+ */
+
+function site_manager_node_delete(NodeInterface $node) {
+    if ($node->getType() == 'site') {
+      $site = new \Drupal\site_manager\SiteManager($node);
+      $status = $site->deleteProcess() ;
+    }
+}
+
+function site_manager_preprocess_page(&$variables)
+{
+    $current_url = \Drupal::service('path.current')->getPath();
+    $alias = \Drupal::service('path_alias.manager')->getAliasByPath( $current_url);
+    $theme_select = \Drupal::request()->query->get('theme_select');
+    $site_new = \Drupal::request()->query->get('site_new'); 
+    if($alias == '/theme' &&  $theme_select &&    $site_new ){  
+      $node = \Drupal::entityTypeManager()->getStorage('node')->load($site_new);
+      if(is_object( $node)){ 
+       $url  = "/conditions?site_new=".$node->id();
+      //  $site = new \Drupal\site_manager\SiteManager($node);
+      //  $site->createDatabase();
+       $node->st_theme->value = $theme_select;
+       $node->save();
+      }
+      $response = new RedirectResponse($url);
+      $response->send();
+      return ;
+    }
+
+
+}
+function site_manager_form_alter(&$form, &$form_state, $form_id) {
+
+
+    if ($form_id == 'node_site_delete_form') {
+       // $form['#validate'][] = '_site_delete_validation';
+    }
+    if($form_id =='node_site_edit_form'){
+    }
+    if($form_id == "node_site_form"){  
+      $current_url = \Drupal::service('path.current')->getPath();
+      $alias = \Drupal::service('path_alias.manager')->getAliasByPath( $current_url);
+      switch ($alias) {
+        case "/order":
+          $form_mode = 'init_booking';
+          $config = \Drupal::config('site_manager.settings');
+          $domain_name = $config->get('domain_name');
+          $form['title']['#prefix'] = '<div class="sitename-container">';
+          $form['title']['#suffix'] =  '<div class="descriptionsitename">The subdomain name will be the URL of your website</div></div>';
+          $form['label_site']['#prefix'] = '<div class="sitename-container">';
+          $form['label_site']['#suffix'] =  '<div class="descriptionsitename">The sitename is used in any email correspondence with your customers.</div></div>';
+        
+          $form['#validate'][] = 'site_manager_validator_submit';
+          $form['actions']['submit']['#submit'][] = '_redirect_form_submit';
+          
+          break;
+      }
+    }
+
+}
+
+function site_manager_entity_form_mode_alter(&$form_mode, Drupal\Core\Entity\EntityInterface $entity) {
+  if ($entity->getEntityTypeId() == 'node' && $entity->bundle() == 'site') {
+   
+    $current_url = \Drupal::service('path.current')->getPath();
+    $alias = \Drupal::service('path_alias.manager')->getAliasByPath( $current_url);
+    switch ($alias) {
+      case "/order":
+          $form_mode = 'init_booking';
+          break;     
+    }
+  }
+}
+function _redirect_form_submit($form, FormStateInterface &$form_state) {
+    // $node = $form_state->getFormObject()->getEntity();
+    // $site = new \Drupal\site_manager\SiteManager($node);
+    // $site->process() ;
+    $current_url = \Drupal::service('path.current')->getPath();
+    $alias = \Drupal::service('path_alias.manager')->getAliasByPath( $current_url);
+    switch ($alias) {
+      case "/order":
+          $node = $form_state->getFormObject()->getEntity();
+          $url  = "/app?site_new=".$node->id();
+          $response = new RedirectResponse($url);
+          $response->send();
+          return ;
+          break;
+      case "/app":
+          $node = $form_state->getFormObject()->getEntity();
+          $url  = "/theme?site_new=".$node->id();
+          $response = new RedirectResponse($url);
+          $response->send();
+          return ;
+          break;
+      // case "/theme":
+      //     $node = $form_state->getFormObject()->getEntity();
+      //     $url  = "/conditions?site_new=".$node->id();
+      //     $site = new \Drupal\site_manager\SiteManager($node);
+      //     $site->createDatabase();
+      //     $response = new RedirectResponse($url);
+      //     $response->send();
+      //     return ;
+      //     break;
+       case "/conditions":
+        $node = $form_state->getFormObject()->getEntity();
+        $url  = "/process?site_new=".$node->id();
+        $response = new RedirectResponse($url);
+        $response->send();
+        return ;
+        break;     
+      case "/process":
+           $node = $form_state->getFormObject()->getEntity();
+           $site = new \Drupal\site_manager\SiteManager($node);
+           $site->process() ;
+           return ;
+         break;   
+    }
+
+}
+
+
+
+function site_manager_validator_submit($form, FormStateInterface &$form_state) {
+  
+    $site_name = $form_state->getValue('title');
+    $bol  = \Drupal\site_manager\SiteManager::dbconfig();
+    $values = $form_state->getValues();
+    $status = \Drupal\site_manager\SiteManager::is_exist($site_name[0]['value']);
+
+    if($status){
+        $form_state->setErrorByName('Site settings', t('Subdomain  '.$site_name[0]['value'].' already exists'));
+        \Drupal::messenger()->addMessage('Subdomain '.$site_name[0]['value'].' already exists','error');
+    }
+    if($bol){
+        $form_state->setErrorByName('Site settings', t('Please setting database settings in admin/config/site_manager'));
+        \Drupal::messenger()->addMessage('Please setting database settings in admin/config/site_manager','error');
+ 
+    }
+    if (!preg_match('/^[a-zA-Z0-9]+$/', $site_name[0]['value'])) {
+      // Set an error for the field.
+      $form_state->setErrorByName('Site settings', t('Only letters and numbers (no spaces) are allowed in the subdomain field.'));
+      \Drupal::messenger()->addMessage('Only letters and numbers (no spaces) are allowed in the subdomain field.','error');
+ 
+    }
+}
+
+
+
+function site_manager_preprocess_node(&$variables){
+  $node = $variables['elements']["#node"];
+  if($variables["view_mode"] == "full" && is_object($node) && $node->bundle() == "site"){
+    $redirect_url = $node->field_st_domain_name->value  ;
+    $script = <<<JS
+      // JavaScript redirect after 3 seconds.
+      setTimeout(function() {
+        window.location.href = '$redirect_url';
+      }, 30);
+    JS;
+
+  // Attach the JavaScript code to the page.
+  $variables['#attached']['html_head'][] = [
+    [
+      '#type' => 'html_tag',
+      '#tag' => 'script',
+      '#value' => $script,
+    ],
+    'site_manager_redirect_script',
+  ];
+
+
+
+  }
+  
+}
+
+function _updateImage(array &$form, FormStateInterface $form_state) {
+  $selected_option = $form_state->getValue('st_theme');
+  $image_path = '';
+
+  // Determine the image path based on the selected option.
+  if ($selected_option == "template_1") {
+    $path = 'https://template.staydirect.cloud';
+    $image = '/themes/custom/staydirect/theme1.jpg';
+    $title = 'Azure Bliss';
+    $text = 'Elevate your digital presence with Azure Bliss and let the calming waves of blue inspire confidence and connection.';
+
+  }
+  elseif ($selected_option == "template_2") {
+    $path = 'https://template.staydirect.cloud';
+    $image = '/themes/custom/staydirect/theme2.jpg';
+    $title = 'Verdant Harmony';
+    $text = 'Experience the Verdant Harmony template and watch your online presence flourish in a world of sustainable design';
+
+  }
+  elseif ($selected_option == "template_3") {
+    $path = 'https://template.staydirect.cloud';
+    $image = '/themes/custom/staydirect/theme3.jpg';
+    $title = 'Monochrome Elegance';
+    $text = 'Experience the enduring elegance of Monochrome Elegance and let your content shine against a backdrop of classic design. ';
+
+  }
+
+  // Add an image element to the form.
+  $html = _html_card_template($title,$text,$image , $path );
+  $form['image_wrapper']['image'] = [
+    '#markup' =>$html ,
+  ];
+  return $form['image_wrapper'];
+}
+function _html_card_template($title,$text,$image , $path ){
+  $html = '<div class="row card-main-template"><img class="col-md-6" src="'.$image.'"/>';
+  $html = $html.'<div class="col-md-6">';
+  $html = $html. '<h3 class="card-title"> '.$title.'</h3>';
+  $html = $html. '<p class="card-text">'.$text.'</p>';
+  $html = $html. '<a href="'.$path.'" class="btn-template">Preview</a>';
+  $html = $html.'</div>';
+  $html = $html.'</div>';
+  return $html;
+}
+

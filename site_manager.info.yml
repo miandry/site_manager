@@ -1,0 +1,6 @@
+name: 'site_manager'
+type: module
+description: 'Manage web site'
+core: 8.x
+core_version_requirement: ^8 || ^9
+package: 'Custom'

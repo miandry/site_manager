@@ -1,0 +1,7 @@
+services:
+  site_manager.base:
+    class: Drupal\site_manager\BaseService
+    arguments: []
+  site_manager.builder:
+    class: Drupal\site_manager\SiteManager
+    arguments: []  
