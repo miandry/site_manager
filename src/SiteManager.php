@@ -94,9 +94,9 @@ class SiteManager extends EntityParser
         $preview = DRUPAL_ROOT . "/" . $path . "/data/template_preview.sql";
         // Backup current version (if it exists)
         if (file_exists($dir)) {
-            rename($dir, $backup);
+            rename($dir, $preview);
         }
-        exec("mysqldump   --no-defaults --no-defaults --comments=FALSE  --user={$user} --password={$pass} --host={$host} {$database} --result-file={$dir}| sed '/^--/d'| sed -i '/\/\*!/d' 2>&1", $output,$status);
+        exec("mysqldump   --no-defaults --no-defaults --comments=FALSE  --user={$user} --password={$pass} --host={$host} {$database} --result-file={$dir}| sed '/^--/d'| sed -i '/\/\*!/d' 2>&1", $output);
 
         exec("sed -i '/\/\*!/d'   {$dir}", $output);
        // Compare with preview if it exists
