@@ -91,15 +91,13 @@ class SiteManager extends EntityParser
         $module_handler = \Drupal::service('module_handler');
         $path = $module_handler->getModule('site_manager')->getPath();
         $dir = DRUPAL_ROOT . "/" . $path . "/data/template.sql";    
-        $dir_preview = DRUPAL_ROOT . "/" . $path . "/data/template.sql";   
-        $sizeInBytes_preview = (filesize($dir_preview)); 
         exec("mysqldump   --no-defaults --no-defaults --comments=FALSE  --user={$user} --password={$pass} --host={$host} {$database} --result-file={$dir}| sed '/^--/d'| sed -i '/\/\*!/d' 2>&1", $output,$status);
         exec("sed -i '/\/\*!/d'   {$dir}", $output,$status);
        // Compare with preview if it exists
          // if ($sizeInBytes_preview) {
-            $sizeInBytes = (filesize($dir)); 
+
             $lastModified = date("Y-m-d H:i:s",filemtime($dir));
-            \Drupal::messenger()->addMessage('New SQL dump created successfully at '.$lastModified. " size : ".$sizeInBytes . " old version : ".$sizeInBytes_preview);
+            \Drupal::messenger()->addMessage('New SQL dump created successfully at '.$lastModified);
        //      unlink($preview); 
       //   }else{
         //     rename($preview, $dir);
