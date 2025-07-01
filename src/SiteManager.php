@@ -107,7 +107,7 @@ class SiteManager extends EntityParser
      //    }
  
     }
-    function formatSize($bytes, $precision = 2) {
+    public function formatSize($bytes, $precision = 2) {
         $units = ['B', 'KB', 'MB', 'GB', 'TB'];
         $i = 0;
         while ($bytes >= 1024 && $i < count($units) - 1) {
