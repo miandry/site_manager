@@ -30,18 +30,20 @@ class ProcessForm extends FormBase {
  
     $current_url = \Drupal::service('path.current')->getPath();
     $alias = \Drupal::service('path_alias.manager')->getAliasByPath( $current_url);
-    $site_new = \Drupal::request()->query->get('site_new');
-    $form['nid'] = [
-      '#type' => 'hidden',
-      '#value' =>  $site_new,
-    ];
+    $temp_store_factory = \Drupal::service('session_based_temp_store');
+    $uid = \Drupal::currentUser()->id();// User ID
+    $temp_store = $temp_store_factory->get($uid.'_build_site', 106400); 
+    $data = $temp_store->get('data');
+
     $form['alias'] = [
       '#type' => 'hidden',
       '#value' =>   $alias ,
     ];
+
+
     switch ($alias) {
       case "/app":  
-        if($site_new){
+        if($data && $data["title"] && $data["site_label"] && $data["created"]){
           $form['field_profile'] = array(
             '#type' => 'radios',
             '#title' => t('Business Types'),
@@ -51,6 +53,19 @@ class ProcessForm extends FormBase {
             ),
             '#default_value' => 'booking',
           );
+          $form['actions']['back'] = [
+            '#type' => 'button',
+            '#value' => t('Back'),
+            '#attributes' => [
+              'onclick' => 'history.back(); return false;', // JavaScript back
+              'class' => ['button'],
+            ],
+            '#weight' => 90,
+          ];
+          $form['submit'] = [
+            '#type' => 'submit',
+            '#value' => $this->t('Save and continue'),
+          ];
           
         } else {
           $url  = "/order";
@@ -60,42 +75,34 @@ class ProcessForm extends FormBase {
         }
         break;
       case "/theme":
-       
-        if($site_new){
-            // Select list (dropdown) element
-            $form['st_theme'] = array(
-              '#type' => 'select',
-              '#title' => t('Themes'),
-              '#options' => array(
-                'template_1' => t('Azure Bliss'),
-                'template_2' => t('Verdant Harmony'),
-                'template_3' => t('Monochrome Elegance'),
-              ),
-              '#default_value' =>  'template_1',
-              '#ajax' => array(
-                'callback' => '_updateImage',
-                'wrapper' => 'ajax-wrapper', // ID of the HTML element to replace with updated content.
-                'event' => 'change', // You can use other effects like 'slide', 'none', etc.
-              ),
-  
-            );
+          
+        if($data && $data["title"] && $data["site_label"] && $data["created"] 
+        && $data["field_profile"] ){
+            $request = \Drupal::request();
+            $theme_select = $request->query->get('theme_select');
+            $op = $request->query->get('back');
+            if($op  && $op == "Back"){
+              $url  = "/app";
+              $response = new RedirectResponse($url);
+              $response->send();
+            }
+            if($theme_select){
+              $data["st_theme"] = $theme_select ;
+              $temp_store->set('data',$data);
+              $url  = "/conditions";
+              $response = new RedirectResponse($url);
+              $response->send();
+            }else{
+              return [];
+            }
 
-          $path = 'https://template.staydirect.cloud';
-          $image = '/themes/custom/staydirect/theme1.jpg';
-          $title = 'Azure Bliss';
-          $text = 'Elevate your digital presence with Azure Bliss and let the calming waves of blue inspire confidence and connection.';  
-          $html = _html_card_template($title,$text,$image , $path );
-          $form['image_wrapper'] = [
-              '#type' => 'container',
-              '#attributes' => ['id' => 'ajax-wrapper'],
-              'image' =>['#markup' =>  $html ],
-          ];
-        } else {
+        }else{
           $url  = "/order";
           $response = new RedirectResponse($url);
           $response->send();
           return ;
         }
+    
 
       break;
       case "/conditions":
@@ -103,12 +110,26 @@ class ProcessForm extends FormBase {
         $form['html_text'] = [
           '#markup' => '<div class="block-title"> '. $term .' </div>',
         ];
-        if($site_new){
+        if($data && $data["title"] && $data["site_label"] && $data["created"] 
+        && $data["field_profile"] && $data["st_theme"] ){
           $form['is_agree'] = array(
             '#type' => 'checkbox',
             '#title' => t('I agree to the terms and conditions'),
             '#required' => TRUE, // Set the checkbox as required.
           );
+          $form['actions']['back'] = [
+            '#type' => 'button',
+            '#value' => t(' Back'),
+            '#attributes' => [
+              'onclick' => 'history.back(); return false;', // JavaScript back
+              'class' => ['button'],
+            ],
+            '#weight' => 90,
+          ];
+          $form['submit'] = [
+            '#type' => 'submit',
+            '#value' => $this->t('Submit and Start process'),
+          ];
         } else {
           $url  = "/order";
           $response = new RedirectResponse($url);
@@ -117,10 +138,7 @@ class ProcessForm extends FormBase {
         }
          break;  
     }
-    $form['submit'] = [
-      '#type' => 'submit',
-      '#value' => $this->t('Save and continue'),
-    ];
+
     return $form;
   }
 
@@ -131,56 +149,39 @@ class ProcessForm extends FormBase {
    
   }
 
+
   /**
    * {@inheritdoc}
    */
   public function submitForm(array &$form, FormStateInterface $form_state) {
     $values = $form_state->getValues();
     $alias =  $values["alias"];
+    $temp_store_factory = \Drupal::service('session_based_temp_store');
+    $uid = \Drupal::currentUser()->id();// User ID
+    $temp_store = $temp_store_factory->get($uid.'_build_site', 106400); 
+    $data = $temp_store->get('data');
     switch ($alias) {
       case "/app":
-        $nid =  $values["nid"];
-        $node= \Drupal::entityTypeManager()->getStorage('node')->load($nid);   
-         if(is_object( $node)){
-          $node->field_profile->value = $values["field_profile"];
-          $node->save();
-         }
-         $url  = "/theme?site_new=".$nid;
-         $response = new RedirectResponse($url);
-         $response->send();
-         return ;
-      break;   
-      case "/theme":
-        $nid =  $values["nid"];
-        $node= \Drupal::entityTypeManager()->getStorage('node')->load($nid); 
-        if(is_object( $node)){ 
-         $node->st_theme->value = $values["st_theme"];
-         $node->save();
-        }
-    
-        $url  = "/conditions?site_new=".$nid;
+        $data["field_profile"] =  $values["field_profile"];
+        $temp_store->set('data',$data);
+        $url  = "/theme";
         $response = new RedirectResponse($url);
         $response->send();
         return ;
-      break;    
+      break;      
       case "/conditions":
-        $nid =  $values["nid"];
-        $node= \Drupal::entityTypeManager()->getStorage('node')->load($nid); 
-        if(is_object( $node)){ 
-         $node->field_is_agree->value = 1 ;
-         $node->save();
-        }
 
-        
+        $bundle = "site";
+        $entity_type = "node";
+        $node = \Drupal::service('crud')->save($entity_type, $bundle, $data);
+        $node->save();
         $site = new \Drupal\site_manager\SiteManager($node);
         $site->createDatabase();
-
-        //$site = new \Drupal\site_manager\SiteManager($node);
-        //$site->process() ;
+        $nid = $node->id();
         $url  = "/process?site_new=".$nid;
         $response = new RedirectResponse($url);
         $response->send();
-        return ;
+        return;
       break;  
       case "/process":
         $nid =  $values["nid"];
@@ -197,13 +198,10 @@ class ProcessForm extends FormBase {
         $site = new \Drupal\site_manager\SiteManager($node);
         $status = $site->isExistDatabase();
         if($status){
-
           $site->process();
           $url  = "/node/".$nid;
           $response = new RedirectResponse($url);
           $response->send();
-
-
         }else{
           $url  = "/order";
           $response = new RedirectResponse($url);

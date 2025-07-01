@@ -309,4 +309,40 @@ function _html_card_template($title,$text,$image , $path ){
   $html = $html.'</div>';
   return $html;
 }
+function site_manager_form_node_form_alter(&$form, \Drupal\Core\Form\FormStateInterface $form_state, $form_id) {
+   // Get the current path.
+   $current_path = \Drupal::service('path.current')->getPath();
+   // Normalize the internal path to a standard format.
+   $internal_path = \Drupal::service('path_alias.manager')->getAliasByPath($current_path);
+   // Check if the current path is '/planning'.
+   if ($internal_path == '/order') {
+        $form['actions'] = [] ;
+        $form['actions']['custom_save'] = [
+          '#type' => 'submit',
+          '#value' => t('Custom Save'),
+          '#submit' => ['mymodule_custom_save_submit'],
+          '#weight' => 100,
+        ];
+   }
+}
+function mymodule_custom_save_submit(array &$form, \Drupal\Core\Form\FormStateInterface $form_state) {
+  
+  $values = $form_state->getValues();
+  $data =[
+    "title" => $values["title"][0]["value"],
+    "site_label" => $values["label_site"][0]["value"],
+    "created" => $values["changed"]
+  ] ;
+  $temp_store_factory = \Drupal::service('session_based_temp_store');
+  $uid = \Drupal::currentUser()->id();// User ID
+  $temp_store = $temp_store_factory->get($uid.'_build_site', 106400); 
+  $temp_store->deleteAll();
+  $temp_store->set('data', $data);
+  $url  = "/app";
+  $response = new RedirectResponse($url);
+  $response->send();
+  return ;
+
+  
+}
 
