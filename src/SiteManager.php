@@ -90,23 +90,21 @@ class SiteManager extends EntityParser
 
         $module_handler = \Drupal::service('module_handler');
         $path = $module_handler->getModule('site_manager')->getPath();
-        $dir = DRUPAL_ROOT . "/" . $path . "/data/template.sql";
-        $preview = DRUPAL_ROOT . "/" . $path . "/data/template_preview.sql";
-        // Backup current version (if it exists)
+        $dir = DRUPAL_ROOT . "/" . $path . "/data/template.sql";    
         if (file_exists($dir)) {
-            rename($dir, $preview);
+           unlink($dir);
         }
         exec("mysqldump   --no-defaults --no-defaults --comments=FALSE  --user={$user} --password={$pass} --host={$host} {$database} --result-file={$dir}| sed '/^--/d'| sed -i '/\/\*!/d' 2>&1", $output);
-
         exec("sed -i '/\/\*!/d'   {$dir}", $output);
        // Compare with preview if it exists
           if (file_exists($dir)) {
-            \Drupal::messenger()->addMessage('New SQL dump created successfully.');
-             unlink($preview); 
-          }else{
-            rename($preview, $dir);
+            $lastModified = date("Y-m-d H:i:s",filemtime($dir));
+            \Drupal::messenger()->addMessage('New SQL dump created successfully at '.$lastModified);
+       //      unlink($preview); 
+         }else{
+        //     rename($preview, $dir);
             \Drupal::messenger()->addError('Failed to update database'); 
-          }
+         }
  
     }
     public static function dump_file(){
