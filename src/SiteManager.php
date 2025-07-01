@@ -91,20 +91,32 @@ class SiteManager extends EntityParser
         $module_handler = \Drupal::service('module_handler');
         $path = $module_handler->getModule('site_manager')->getPath();
         $dir = DRUPAL_ROOT . "/" . $path . "/data/template.sql";    
+        $dir_preview = DRUPAL_ROOT . "/" . $path . "/data/template.sql";   
+        $sizeInBytes_preview = $this->formatSize(filesize($dir_preview)); 
         exec("mysqldump   --no-defaults --no-defaults --comments=FALSE  --user={$user} --password={$pass} --host={$host} {$database} --result-file={$dir}| sed '/^--/d'| sed -i '/\/\*!/d' 2>&1", $output,$status);
         exec("sed -i '/\/\*!/d'   {$dir}", $output,$status);
        // Compare with preview if it exists
-          if (file_exists($dir)) {
-            $sizeInBytes = filesize($dir);
+         // if ($sizeInBytes_preview) {
+            $sizeInBytes = $this->formatSize(filesize($dir));
             $lastModified = date("Y-m-d H:i:s",filemtime($dir));
-            \Drupal::messenger()->addMessage('New SQL dump created successfully at '.$lastModified. " size : ".$sizeInBytes);
+            \Drupal::messenger()->addMessage('New SQL dump created successfully at '.$lastModified. " size : ".$sizeInBytes . " old version : ".$sizeInBytes_preview);
        //      unlink($preview); 
-         }else{
+      //   }else{
         //     rename($preview, $dir);
-            \Drupal::messenger()->addError('Failed to update database'); 
-         }
+     //       \Drupal::messenger()->addError('Failed to update database'); 
+     //    }
  
     }
+    function formatSize($bytes, $precision = 2) {
+        $units = ['B', 'KB', 'MB', 'GB', 'TB'];
+        $i = 0;
+        while ($bytes >= 1024 && $i < count($units) - 1) {
+            $bytes /= 1024;
+            $i++;
+        }
+        return round($bytes, $precision) . ' ' . $units[$i];
+    }
+    
     public static function dump_file(){
         ini_set('display_errors', 1);
         ini_set('display_startup_errors', 1);
