@@ -54,13 +54,14 @@ class ProcessForm extends FormBase {
             '#default_value' => 'booking',
           );
           $form['actions']['back'] = [
-            '#type' => 'button',
+            '#type' => 'submit',
             '#value' => t('Back'),
+            '#submit' => ['::customRedirectSubmit'],
+            '#limit_validation_errors' => [], // Skip validation
             '#attributes' => [
-              'onclick' => 'history.back(); return false;', // JavaScript back
               'class' => ['button'],
             ],
-            '#weight' => 90,
+            '#weight' => 100,
           ];
           $form['submit'] = [
             '#type' => 'submit',
@@ -118,13 +119,14 @@ class ProcessForm extends FormBase {
             '#required' => TRUE, // Set the checkbox as required.
           );
           $form['actions']['back'] = [
-            '#type' => 'button',
-            '#value' => t(' Back'),
+            '#type' => 'submit',
+            '#value' => t('Back'),
+            '#submit' => ['::customRedirectSubmit'],
+            '#limit_validation_errors' => [], // Skip validation
             '#attributes' => [
-              'onclick' => 'history.back(); return false;', // JavaScript back
               'class' => ['button'],
             ],
-            '#weight' => 90,
+            '#weight' => 100,
           ];
           $form['submit'] = [
             '#type' => 'submit',
@@ -148,7 +150,21 @@ class ProcessForm extends FormBase {
   public function validateForm(array &$form, FormStateInterface $form_state) {
    
   }
-
+  public function customRedirectSubmit(array &$form, \Drupal\Core\Form\FormStateInterface $form_state) {
+    $current_url = \Drupal::service('path.current')->getPath();
+    $alias = \Drupal::service('path_alias.manager')->getAliasByPath( $current_url);
+    $url_string = "/order"; 
+    switch ($alias) {
+      case "/app":  
+      $url_string = "/order";
+      break;  
+      case "/conditions":  
+         $url_string = "/theme";   
+      break; 
+   }
+   $url = \Drupal\Core\Url::fromUserInput($url_string); // ← Your target path
+   $form_state->setRedirectUrl($url);
+  }
 
   /**
    * {@inheritdoc}
