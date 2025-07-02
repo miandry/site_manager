@@ -320,7 +320,7 @@ function site_manager_form_node_form_alter(&$form, \Drupal\Core\Form\FormStateIn
         $form['actions'] = [] ;
         $form['actions']['custom_save'] = [
           '#type' => 'submit',
-          '#value' => t('Custom Save'),
+          '#value' => t('Save and continue'),
           '#submit' => ['mymodule_custom_save_submit'],
           '#weight' => 100,
         ];

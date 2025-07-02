@@ -130,7 +130,7 @@ class ProcessForm extends FormBase {
           ];
           $form['submit'] = [
             '#type' => 'submit',
-            '#value' => $this->t('Submit and Start process'),
+            '#value' => $this->t('Save and continue'),
           ];
         } else {
           $url  = "/order";
@@ -147,7 +147,7 @@ class ProcessForm extends FormBase {
             ];
             $form['submit'] = [
               '#type' => 'submit',
-              '#value' => $this->t('Submit and Start process'),
+              '#value' => $this->t('Build now'),
             ];
          break;
     }
