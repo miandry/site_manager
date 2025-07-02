@@ -138,7 +138,18 @@ class ProcessForm extends FormBase {
           $response->send();
           return;
         }
-         break;  
+         break; 
+         case "/process": 
+            $site_new = \Drupal::request()->query->get('site_new');
+            $form['nid'] = [
+              '#type' => 'hidden',
+              '#value' =>  $site_new,
+            ];
+            $form['submit'] = [
+              '#type' => 'submit',
+              '#value' => $this->t('Submit and Start process'),
+            ];
+         break;
     }
 
     return $form;
@@ -186,44 +197,38 @@ class ProcessForm extends FormBase {
         return ;
       break;      
       case "/conditions":
-
-        $bundle = "site";
-        $entity_type = "node";
-        $node = \Drupal::service('crud')->save($entity_type, $bundle, $data);
-        $node->save();
-        $site = new \Drupal\site_manager\SiteManager($node);
-        $site->createDatabase();
-        $nid = $node->id();
-        $url  = "/process?site_new=".$nid;
+        $url  = "/process";
         $response = new RedirectResponse($url);
         $response->send();
         return;
       break;  
       case "/process":
-        $nid =  $values["nid"];
+        $bundle = "site";
+        $entity_type = "node";
+        $data["field_status"] = 'In_process' ;
+        $node = \Drupal::service('crud')->save($entity_type, $bundle, $data);
+        $node->save();
+        $site = new \Drupal\site_manager\SiteManager($node);
+        $site->createDatabase();
+        $nid = $node->id();
         $node= \Drupal::entityTypeManager()->getStorage('node')->load($nid); 
         if(is_object($node)){ 
-         $node->field_status->value = 'In_process' ;
-         $node->save();
-        }else{
-          $url  = "/order";
-          $response = new RedirectResponse($url);
-          $response->send();
-          return ;
+            $site = new \Drupal\site_manager\SiteManager($node);
+            $status = $site->isExistDatabase();
+            if($status){
+              $site->process();
+              $url  = "/node/".$nid;
+              $response = new RedirectResponse($url);
+              $response->send();
+              return ;
+            }
         }
-        $site = new \Drupal\site_manager\SiteManager($node);
-        $status = $site->isExistDatabase();
-        if($status){
-          $site->process();
-          $url  = "/node/".$nid;
-          $response = new RedirectResponse($url);
-          $response->send();
-        }else{
-          $url  = "/order";
-          $response = new RedirectResponse($url);
-          $response->send();
-          return ;
-        }
+
+        $url  = "/order";
+        $response = new RedirectResponse($url);
+        $response->send();
+        return ;
+      
       break;   
       
     }
