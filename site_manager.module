@@ -316,6 +316,7 @@ function site_manager_form_node_form_alter(&$form, \Drupal\Core\Form\FormStateIn
    $internal_path = \Drupal::service('path_alias.manager')->getAliasByPath($current_path);
    // Check if the current path is '/planning'.
    if ($internal_path == '/order') {
+        $form['#validate'][] = '__site_manager_node_title_unique_validate';
         $form['actions'] = [] ;
         $form['actions']['custom_save'] = [
           '#type' => 'submit',
@@ -324,6 +325,28 @@ function site_manager_form_node_form_alter(&$form, \Drupal\Core\Form\FormStateIn
           '#weight' => 100,
         ];
    }
+}
+
+function __site_manager_node_title_unique_validate(array &$form, FormStateInterface $form_state) {
+  $values = $form_state->getValues();
+  $title = $values["title"][0]["value"];
+  // Get current node ID if editing
+  $node = $form_state->getFormObject()->getEntity();
+  $nid = $node->id();
+
+  // Search for existing nodes with the same title
+  $query = \Drupal::entityQuery('node')
+    ->condition('title', $title)
+    ->condition('type', 'site');
+  if ($nid) {
+    $query->condition('nid', $nid, '!=');
+  }
+
+  $results = $query->execute();
+
+  if (!empty($results)) {
+    $form_state->setErrorByName('title', t('A Subdomain '.$title.' is already exists.'));
+  }
 }
 function mymodule_custom_save_submit(array &$form, \Drupal\Core\Form\FormStateInterface $form_state) {
   

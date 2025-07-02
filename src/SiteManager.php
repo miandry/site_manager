@@ -224,11 +224,6 @@ class SiteManager extends EntityParser
             $booking = $query_factory->execute();
             if (!empty($booking)) {
                 return true;
-            }else{
-                $node = Node::load(end($result)); 
-                if(is_object($node)){
-                 $node->delete();
-                }
             }
         }
         return false;
