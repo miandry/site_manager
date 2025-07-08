@@ -82,22 +82,39 @@ class SiteManager extends EntityParser
         error_reporting(E_ALL);
 
         $config = \Drupal::config('site_manager.settings');
-        $host = $config->get('host'); // Replace with your server name
-        $user = $config->get('user'); // Replace with your database username
-        $pass =  $config->get('password');
-        $database = $config->get('database_default') ;
-
-
+        $host = $config->get('host');
+        $user = $config->get('user');
+        $pass = $config->get('password');
+        $database = $config->get('database_default');
+        
         $module_handler = \Drupal::service('module_handler');
         $path = $module_handler->getModule('site_manager')->getPath();
-        $dir = DRUPAL_ROOT . "/" . $path . "/data/template.sql";    
-        exec("mysqldump   --no-defaults --no-defaults --comments=FALSE  --user={$user} --password={$pass} --host={$host} {$database} --result-file={$dir}| sed '/^--/d'| sed -i '/\/\*!/d' 2>&1", $output,$status);
-        exec("sed -i '/\/\*!/d'   {$dir}", $output,$status);
-       // Compare with preview if it exists
-         // if ($sizeInBytes_preview) {
-
+        $dir = DRUPAL_ROOT . "/" . $path . "/data/template.sql";
+        
+        // Escape variables to prevent injection
+        $escapedUser = escapeshellarg($user);
+        $escapedPass = escapeshellarg($pass);
+        $escapedHost = escapeshellarg($host);
+        $escapedDatabase = escapeshellarg($database);
+        $escapedFile = escapeshellarg($dir);
+        
+        // Step 1: Dump database to file
+        exec("mysqldump --no-defaults --comments=FALSE --user={$escapedUser} --password={$escapedPass} --host={$escapedHost} {$escapedDatabase} --result-file={$escapedFile} 2>&1", $output1, $status1);
+        
+        // Step 2: Clean up file with sed (removing /*! and -- lines)
+        exec("sed -i '/^--/d' {$escapedFile}", $output2, $status2);
+        exec("sed -i '/\\/\\*!/d' {$escapedFile}", $output3, $status3);
+        
+        // Check statuses
+        if ($status1 !== 0 || $status2 !== 0 || $status3 !== 0) {
+          \Drupal::logger('site_manager')->error("Error during dump: mysqldump={$status1}, sed1={$status2}, sed2={$status3}");
+        }else{
             $lastModified = date("Y-m-d H:i:s",filemtime($dir));
             \Drupal::messenger()->addMessage('New SQL dump created successfully at '.$lastModified);
+        }
+        
+
+    
        //      unlink($preview); 
       //   }else{
         //     rename($preview, $dir);
